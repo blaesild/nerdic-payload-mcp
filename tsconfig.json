@@ -1,21 +1,22 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "lib": ["ES2020"],
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ESNext"],
+    "moduleResolution": "Bundler", // Use 'NodeNext' or 'Bundler'
     "resolveJsonModule": true,
-    "baseUrl": ".",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "outDir": "./dist", // Matches tsup output
+    "rootDir": "./src",
+    "baseUrl": ".", // Important for paths
     "paths": {
-      "@/*": ["src/*"]
+      "@/core/*": ["src/core/*"], // Alias for core logic
+      "@/api/*": ["src/api/*"]   // Alias for API logic
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
-} 
+}

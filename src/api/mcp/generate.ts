@@ -1,24 +1,68 @@
-import { Router, Request, Response } from 'express';
-import { generate } from '../../core/generation';
-import { MCPContext } from '../../core/types';
+import { Router } from "express";
+import {
+  generateTemplate,
+  generateCollection,
+  generateField,
+  generateContextAwareCode,
+} from "../../core/generation.js";
+import { handleMCPRequest } from "../middleware/common.js";
+import { ValidationError } from "../middleware/errorHandler.js";
 
-const generateRouter = Router();
+const router = Router();
 
-generateRouter.post('/', async (req: Request, res: Response) => {
-  try {
-    const context: MCPContext = req.body;
-    const result = await generate(context);
-    
-    res.json({
-      status: 'success',
-      data: result
-    });
-  } catch (error) {
-    res.status(400).json({
-      status: 'error',
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
-  }
-});
+// POST /api/mcp/generate/template
+router.post(
+  "/template",
+  handleMCPRequest(async (req) => {
+    const { type, options } = req.body;
+    if (!type || !options) {
+      throw new ValidationError("Missing required parameters: type, options");
+    }
+    req.mcpTool = "template";
+    return generateTemplate(type, options);
+  }),
+);
 
-export { generateRouter }; 
+// POST /api/mcp/generate/collection
+router.post(
+  "/collection",
+  handleMCPRequest(async (req) => {
+    const params = req.body;
+    if (!params.slug || !params.fields) {
+      throw new ValidationError("Missing required parameters: slug, fields");
+    }
+    req.mcpTool = "collection";
+    return generateCollection(params);
+  }),
+);
+
+// POST /api/mcp/generate/field
+router.post(
+  "/field",
+  handleMCPRequest(async (req) => {
+    const specs = req.body;
+    if (!specs.name || !specs.type) {
+      throw new ValidationError("Missing required parameters: name, type");
+    }
+    req.mcpTool = "field";
+    return generateField(specs);
+  }),
+);
+
+// POST /api/mcp/generate/code
+router.post(
+  "/code",
+  handleMCPRequest(async (req) => {
+    const { prompt, context } = req.body;
+    if (!prompt || !context) {
+      throw new ValidationError("Missing required parameters: prompt, context");
+    }
+    if (typeof prompt !== "string") {
+      throw new ValidationError("Parameter 'prompt' must be a string");
+    }
+    req.mcpTool = "code";
+    return generateContextAwareCode(prompt, context);
+  }),
+);
+
+export default router;

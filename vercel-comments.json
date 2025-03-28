@@ -1,0 +1,39 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "builds": [
+    {
+      "src": "dist/server.js", // Point to the compiled server entry point
+      "use": "@vercel/node",
+       "config": {
+         "includeFiles": [
+           "dist/**",
+           "node_modules/**" // Ensure node_modules needed at runtime are included
+         ]
+       }
+    }
+  ],
+  "routes": [
+     // Optional: Serve health check separately?
+     // { "src": "/api/health", "dest": "/dist/server.js" },
+
+    // Reroute all API requests to the serverless function
+    {
+      "src": "/api/(.*)",
+      "dest": "/dist/server.js"
+    },
+     // Optional: Reroute root if you want '/' to hit the server
+     {
+       "src": "/",
+       "dest": "/dist/server.js"
+     }
+  ],
+   "env": {
+     "NODE_ENV": "production",
+     // Add placeholders for Vercel environment variable UI
+     "OPENAI_API_KEY": "@openai-api-key",
+     "CORS_ORIGIN": "@cors-origin" // e.g., https://your-agent-domain.com or *
+     // Add other secrets here
+   },
+    "outputDirectory": "dist" // Match tsup output
+}

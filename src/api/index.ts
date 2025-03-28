@@ -1,15 +1,23 @@
-import { Router } from 'express';
-import { generateRouter } from './mcp/generate';
-import { queryRouter } from './mcp/query';
-import { scaffoldRouter } from './mcp/scaffold';
-import { validateRouter } from './mcp/validate';
+import { Router } from "express";
+import { setMCPTool } from "./middleware/common.js"; // Correct path
+
+// Import route handlers
+import validateRoutes from "./mcp/validate.js";
+import queryRoutes from "./mcp/query.js";
+import generateRoutes from "./mcp/generate.js";
+import scaffoldRoutes from "./mcp/scaffold.js";
 
 const router = Router();
 
-// MCP routes
-router.use('/mcp/generate', generateRouter);
-router.use('/mcp/query', queryRouter);
-router.use('/mcp/scaffold', scaffoldRouter);
-router.use('/mcp/validate', validateRouter);
+// Health check endpoint
+router.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
-export { router }; 
+// Group MCP routes and apply tool name middleware
+router.use("/mcp/validate", setMCPTool("validate"), validateRoutes);
+router.use("/mcp/query", setMCPTool("query"), queryRoutes);
+router.use("/mcp/generate", setMCPTool("generate"), generateRoutes);
+router.use("/mcp/scaffold", setMCPTool("scaffold"), scaffoldRoutes);
+
+export default router;
