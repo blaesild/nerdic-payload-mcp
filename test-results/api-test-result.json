@@ -1,0 +1,19 @@
+{
+  "timestamp": "2025-04-01T12:28:40.122Z",
+  "message": {
+    "jsonrpc": "2.0",
+    "method": "generate",
+    "params": {
+      "options": {
+        "name": "title",
+        "type": "text",
+        "required": true
+      }
+    },
+    "id": "api-test-1743510520091"
+  },
+  "response": {
+    "status": 500,
+    "data": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Missing required parameters: name, type\"},\"id\":\"api-test-1743510520091\"}"
+  }
+}

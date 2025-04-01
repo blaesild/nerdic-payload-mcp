@@ -1,0 +1,20 @@
+{
+  "timestamp": "2025-04-01T12:39:46.220Z",
+  "message": {
+    "jsonrpc": "2.0",
+    "method": "callTool",
+    "params": {
+      "name": "field",
+      "arguments": {
+        "name": "title",
+        "type": "text",
+        "required": true
+      }
+    },
+    "id": "jsonrpc-api-test-1743511186129"
+  },
+  "response": {
+    "status": 200,
+    "data": "{\"jsonrpc\":\"2.0\",\"result\":\"{\\n  name: \\\"title\\\",\\n  type: \\\"text\\\",\\n  required: true\\n}\",\"id\":\"jsonrpc-api-test-1743511186129\"}"
+  }
+}

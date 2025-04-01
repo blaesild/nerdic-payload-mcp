@@ -1,0 +1,13 @@
+{
+  "name": "mcp-json-rpc-test",
+  "version": "1.0.0",
+  "description": "Test for JSON-RPC parameter extraction",
+  "type": "module",
+  "main": "test-json-rpc.js",
+  "scripts": {
+    "test": "node test-json-rpc.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.0"
+  }
+} 

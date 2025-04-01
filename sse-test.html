@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSE Test</title>
+</head>
+<body>
+    <h1>SSE Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="log"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusEl = document.getElementById('status');
+            const logEl = document.getElementById('log');
+            
+            // Log function
+            function log(message) {
+                const entry = document.createElement('div');
+                entry.textContent = `${new Date().toISOString()}: ${message}`;
+                logEl.appendChild(entry);
+                console.log(message);
+            }
+            
+            log('Connecting to SSE endpoint...');
+            
+            // Connect to SSE endpoint
+            const eventSource = new EventSource('http://localhost:8090/sse');
+            
+            // Connection opened
+            eventSource.onopen = function() {
+                statusEl.textContent = 'Connected!';
+                log('Connection opened');
+            };
+            
+            // Handle messages
+            eventSource.onmessage = function(event) {
+                log(`Received message: ${event.data}`);
+                
+                // Parse message
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // If we get a session ID, show it
+                    if (data.type === 'connection' && data.status === 'established') {
+                        statusEl.textContent = `Connected! Session ID: ${data.sessionId}`;
+                        log(`Session established with ID: ${data.sessionId}`);
+                        
+                        // Close after 5 seconds to test cleanup
+                        setTimeout(() => {
+                            log('Closing connection...');
+                            eventSource.close();
+                            statusEl.textContent = 'Connection closed';
+                        }, 5000);
+                    }
+                } catch (error) {
+                    log(`Error parsing message: ${error.message}`);
+                }
+            };
+            
+            // Handle errors
+            eventSource.onerror = function(error) {
+                statusEl.textContent = 'Connection error!';
+                log(`Connection error: ${JSON.stringify(error)}`);
+            };
+        });
+    </script>
+</body>
+</html> 

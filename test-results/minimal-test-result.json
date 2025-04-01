@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-04-01T12:39:58.800Z",
+  "message": {
+    "jsonrpc": "2.0",
+    "method": "callTool",
+    "params": {
+      "name": "generate",
+      "arguments": {
+        "type": "field",
+        "options": {
+          "name": "title",
+          "type": "text",
+          "required": true
+        }
+      }
+    },
+    "id": "test-1743511198791"
+  },
+  "response": {
+    "status": 400,
+    "data": "InternalServerError: stream is not readable"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-04-01T12:39:49.590Z",
+  "fieldSpec": {
+    "name": "title",
+    "type": "text",
+    "required": true
+  },
+  "response": {
+    "status": 200,
+    "data": "\"{\\n  name: \\\"title\\\",\\n  type: \\\"text\\\",\\n  required: true\\n}\""
+  }
+}

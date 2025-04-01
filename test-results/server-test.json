@@ -1,0 +1,7 @@
+{
+  "timestamp": "2025-04-01T11:57:42.370Z",
+  "status": 200,
+  "data": {
+    "message": "Test route works!"
+  }
+}

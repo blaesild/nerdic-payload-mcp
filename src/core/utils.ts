@@ -76,3 +76,53 @@ export const JSONRPC_ERROR_CODES = {
   SERVER_ERROR_START: -32000,
   SERVER_ERROR_END: -32099
 } as const;
+
+/**
+ * Extract parameters from different JSON-RPC request formats
+ * This handles all the different ways parameters can be specified:
+ * 1. Direct parameters in request body
+ * 2. JSON-RPC format with parameters in params field
+ * 3. JSON-RPC format with callTool method and nested parameters
+ * 4. JSON-RPC format with callTool and specific tool parameters
+ */
+export function extractJSONRPCParams(body: any, toolName?: string): any {
+  // Check if this is a JSON-RPC request
+  const isJsonRpc = body && body.jsonrpc === "2.0";
+  
+  if (!isJsonRpc) {
+    // Direct parameters in body
+    return body;
+  }
+  
+  // JSON-RPC 2.0 request
+  if (body.method === "callTool" && body.params) {
+    // Format: { jsonrpc: "2.0", method: "callTool", params: { name: "toolName", arguments: {...} } }
+    if (body.params.name && body.params.arguments) {
+      // If a specific tool name is provided, verify it matches
+      if (toolName && body.params.name !== toolName) {
+        // Different tool requested, check if the expected tool is in the arguments
+        if (body.params.arguments.type === toolName) {
+          // The tool is specified as type, extract options if available
+          return body.params.arguments.options || body.params.arguments;
+        }
+        
+        // No tool match, return direct arguments
+        return body.params.arguments;
+      }
+      
+      // Tool match or no specific tool required, extract arguments
+      return body.params.arguments;
+    }
+    
+    // No name/arguments structure, return params directly
+    return body.params;
+  }
+  
+  // Regular JSON-RPC format: { jsonrpc: "2.0", method: "method", params: {...} }
+  if (body.params) {
+    return body.params;
+  }
+  
+  // Fallback to empty object
+  return {};
+}
