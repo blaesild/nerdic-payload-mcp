@@ -36,12 +36,28 @@ export interface MCPContext {
 }
 
 // Unified API Response Format
-export interface MCPResponse<T = unknown> {
-  tool: string; // Name of the MCP tool/function called
+export interface MCPProtocol {
+  name: string;
+  version: number;
+  capabilities?: string[];
+}
+
+export interface MCPResponseData {
+  version: number;
+  type: string;
+  message?: string;
+  payload?: any;
+  protocol: MCPProtocol;
+}
+
+export interface MCPResponse {
+  tool: string;
   success: boolean;
-  data?: T;
-  errors?: { message: string; details?: unknown }[];
-  contextWarnings?: string[]; // Warnings about potentially outdated/incomplete context
+  data: MCPResponseData;
+  error?: {
+    code: string;
+    message: string;
+  };
 }
 
 // Specific types for generation/scaffolding options
@@ -167,4 +183,42 @@ export function isMCPContext(obj: unknown): obj is MCPContext {
     (candidate.hookContext === null ||
       typeof candidate.hookContext === "object")
   );
+}
+
+export interface JSONRPC2Request {
+  jsonrpc: "2.0";
+  method: string;
+  params?: any;
+  id?: number | string | null;
+}
+
+export interface JSONRPC2Response {
+  jsonrpc: "2.0";
+  result?: any;
+  error?: {
+    code: number;
+    message: string;
+    data?: any;
+  };
+  id: number | string | null;
+}
+
+export interface MCPServerInfo {
+  name: string;
+  version: string;
+  description?: string;
+}
+
+export interface MCPCapabilities {
+  generate?: boolean;
+  validate?: boolean;
+  query?: boolean;
+  scaffold?: boolean;
+  [key: string]: boolean | undefined;
+}
+
+export interface MCPConnectionParams {
+  protocolVersion: string;
+  capabilities: MCPCapabilities;
+  serverInfo: MCPServerInfo;
 }

@@ -7,7 +7,7 @@ import { handleMCPRequest } from "../middleware/common.js";
 import { ValidationError } from "../middleware/errorHandler.js";
 import { ValidationRule } from "../../core/types.js";
 
-const router = Router();
+const router: Router = Router();
 
 // GET /api/mcp/query/rules?ruleQuery=...
 router.get(

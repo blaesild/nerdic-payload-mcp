@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { isMCPContext, MCPContext } from "../../core/types";
-import { createSuccessResponse } from "@/core/utils.js"; // Correct path
+import { createJSONRPCSuccess, createJSONRPCError, JSONRPC_ERROR_CODES } from "@/core/utils.js";
 
 // Middleware to attach tool name for consistent responses/error handling
 export function setMCPTool(toolName: string) {
   return (req: Request, res: Response, next: NextFunction) => {
-    req.mcpTool = toolName;
+    res.locals.mcpTool = toolName;
     next();
   };
 }
@@ -19,18 +19,18 @@ export function getContext(
   let context: MCPContext | undefined = undefined;
   const contextWarnings: string[] = [];
 
-  if (body?.context) {
-    if (isMCPContext(body.context)) {
-      context = body.context;
+  if (body?.params?.context) {
+    if (isMCPContext(body.params.context)) {
+      context = body.params.context;
     } else {
       contextWarnings.push(
         "Received context object does not match expected MCPContext structure.",
       );
-      console.warn("MCP API: Invalid context object received:", body.context);
+      console.warn("MCP API: Invalid context object received:", body.params.context);
     }
   } else if (requiresContext) {
     const err = new Error(
-      "MCPContext is required but was not provided in the request body.",
+      "MCPContext is required but was not provided in the request params.",
     ) as Error & { status: number };
     err.status = 400;
     throw err;
@@ -39,32 +39,31 @@ export function getContext(
   return { context, contextWarnings };
 }
 
-// Higher-order function to wrap route handlers with common logic
-export function handleMCPRequest<T>(
-  handler: (req: Request, context?: MCPContext) => Promise<T>,
-): (req: Request, res: Response, next: NextFunction) => Promise<void> {
-  return async (req: Request, res: Response, next: NextFunction) => {
+// Generic MCP request handler wrapper
+export function handleMCPRequest(handler: (req: Request, res: Response) => Promise<any>) {
+  return async (req: Request, res: Response) => {
     try {
-      const { context, contextWarnings } = getContext(req, true);
+      // Validate JSON-RPC request
+      if (!req.body.jsonrpc || req.body.jsonrpc !== "2.0" || !req.body.method) {
+        return res.status(400).json(createJSONRPCError(
+          req.body.id ?? null,
+          JSONRPC_ERROR_CODES.INVALID_REQUEST,
+          "Invalid JSON-RPC 2.0 request"
+        ));
+      }
 
-      const result = await handler(req, context);
-
-      if (result !== undefined && !res.headersSent) {
-        res.json(
-          createSuccessResponse(
-            req.mcpTool || "unknown",
-            result,
-            contextWarnings.length > 0 ? contextWarnings : undefined,
-          ),
-        );
-      } else if (!res.headersSent && result === undefined) {
-        console.warn(
-          `MCP Handler for tool ${req.mcpTool} finished without sending response or returning data.`,
-        );
-        res.status(204).send();
+      const result = await handler(req, res);
+      
+      if (!res.headersSent) {
+        res.json(createJSONRPCSuccess(req.body.id ?? null, result));
       }
     } catch (error) {
-      next(error);
+      console.error("MCP Request Error:", error);
+      res.status(500).json(createJSONRPCError(
+        req.body.id ?? null,
+        JSONRPC_ERROR_CODES.INTERNAL_ERROR,
+        error instanceof Error ? error.message : "Internal server error"
+      ));
     }
   };
 }

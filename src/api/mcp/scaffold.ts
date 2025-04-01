@@ -7,7 +7,7 @@ import { ScaffoldProjectConfig } from "@/core/types.js";
 import { handleMCPRequest } from "@/api/middleware/common.js";
 import { ValidationError } from "@/api/middleware/errorHandler.js";
 
-const router = Router();
+const router: Router = Router();
 
 // POST /api/mcp/scaffold/project
 router.post(

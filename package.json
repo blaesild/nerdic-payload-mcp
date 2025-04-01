@@ -2,11 +2,12 @@
     "name": "nerdic-payload-mcp",
     "version": "1.0.0",
     "description": "Payload MCP tool for generating payload specific structures",
-    "main": "dist/server.js",
+    "main": "dist/server.esm.js",
+    "type": "module",
     "scripts": {
         "dev": "tsx watch src/server.ts",
-        "build": "tsup src/server.ts --format cjs,esm --dts",
-        "start": "node dist/server.js",
+        "build": "tsup",
+        "start": "node dist/server.esm.js",
         "lint": "eslint . --ext .ts",
         "format": "prettier --write \"src/**/*.ts\"",
         "test": "jest"
@@ -22,6 +23,7 @@
     "author": "Your Name",
     "license": "ISC",
     "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.8.0",
         "express": "^4.21.2",
         "dotenv": "^16.4.7",
         "cors": "^2.8.5",

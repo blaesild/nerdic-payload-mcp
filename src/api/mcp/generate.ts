@@ -8,7 +8,7 @@ import {
 import { handleMCPRequest } from "../middleware/common.js";
 import { ValidationError } from "../middleware/errorHandler.js";
 
-const router = Router();
+const router: Router = Router();
 
 // POST /api/mcp/generate/template
 router.post(
