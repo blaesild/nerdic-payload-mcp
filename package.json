@@ -25,13 +25,13 @@
     "license": "ISC",
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.8.0",
-        "express": "^4.21.2",
-        "dotenv": "^16.4.7",
+        "axios": "^1.6.3",
         "cors": "^2.8.5",
+        "dotenv": "^16.4.7",
+        "express": "^4.21.2",
         "helmet": "^7.1.0",
         "openai": "^4.90.0",
-        "zod": "^3.22.4",
-        "axios": "^1.6.3"
+        "zod": "^3.22.4"
     },
     "devDependencies": {
         "@types/cors": "^2.8.17",

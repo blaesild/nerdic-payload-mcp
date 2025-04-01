@@ -46,12 +46,8 @@ export class ConnectionManager {
     
     this.connections.set(transport.sessionId, connectionInfo);
     
-    // Send initial connection confirmation
-    res.write(`data: ${JSON.stringify({ 
-      type: 'connection', 
-      status: 'established', 
-      sessionId: transport.sessionId 
-    })}\n\n`);
+    // Do not send headers directly here - the transport will handle this
+    // Instead, we'll just set up event listeners
     
     // Set up cleanup handlers
     res.on('close', () => {

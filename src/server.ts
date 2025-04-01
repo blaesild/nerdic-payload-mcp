@@ -16,10 +16,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load .env file from project root
-const envResult = dotenv.config({ path: path.resolve(__dirname, "../.env") });
+const envPath = path.resolve(__dirname, "../.env");
+console.log(`Attempting to load .env file from: ${envPath}`);
+const envResult = dotenv.config({ path: envPath });
 if (envResult.error) {
   console.error("Error loading .env file:", envResult.error);
   process.exit(1); // Exit if we can't load environment variables
+} else {
+  console.log("Loaded .env file successfully");
+  console.log("Environment variables:", Object.keys(process.env).filter(key => 
+    !key.startsWith('npm_') && 
+    key !== 'PATH' && 
+    key !== 'HOME').map(key => `${key}=${key === 'OPENAI_API_KEY' ? 'sk-...' : process.env[key]}`));
 }
 
 // Initialize environment
@@ -79,9 +87,20 @@ app.get("/sse", async (req: Request, res: Response) => {
     // Connect the transport to our MCP server
     await mcpServer.connect(transport);
     console.log(`[DEBUG] MCP server connected to transport: ${transport.sessionId}`);
+    
+    // Send initial connection event after MCP connection is established
+    // This ensures we don't have header conflicts
+    res.write(`data: ${JSON.stringify({ 
+      type: 'connection', 
+      status: 'established', 
+      sessionId: transport.sessionId 
+    })}\n\n`);
   } catch (error) {
     console.error('[ERROR] Error setting up SSE connection:', error);
-    res.status(500).send('Error setting up SSE connection');
+    // Only send error response if headers haven't been sent yet
+    if (!res.headersSent) {
+      res.status(500).send('Error setting up SSE connection');
+    }
   }
 });
 
@@ -130,16 +149,19 @@ app.post("/messages", async (req: Request, res: Response) => {
       const queuedMessageId = messageQueue.enqueue(sessionId, req.body);
       
       // Process the message via the transport
-      await connection.transport.handlePostMessage(req, res);
-      
-      // Add message ID to response for client acknowledgment
+      // Set the message ID header before transport processes the request
       res.setHeader('X-Message-Id', queuedMessageId);
+      
+      await connection.transport.handlePostMessage(req, res);
     } catch (error) {
       console.error(`[ERROR] Error processing message for ${sessionId}:`, error);
-      res.status(500).json({ 
-        error: 'Error processing message', 
-        message: error instanceof Error ? error.message : String(error) 
-      });
+      // Only send error response if headers haven't been sent yet
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          error: 'Error processing message', 
+          message: error instanceof Error ? error.message : String(error) 
+        });
+      }
     }
   } else {
     console.error(`[ERROR] No transport found for sessionId: ${sessionId}`);

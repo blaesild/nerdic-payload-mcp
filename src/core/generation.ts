@@ -13,37 +13,26 @@ let openai: OpenAI | null = null;
 // Function to initialize OpenAI client
 export function initializeOpenAI() {
   try {
-    if (process.env.OPENAI_API_KEY) {
-      openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
-      console.log("MCP Core: OpenAI client initialized.");
-      return true;
+    // Directly check environment variable here
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error("MCP Core: OPENAI_API_KEY not found in environment variables");
+      return false;
     }
-    return false;
+    
+    console.log("MCP Core: Using OpenAI API Key starting with:", apiKey.substring(0, 10) + "...");
+    openai = new OpenAI({
+      apiKey
+    });
+    console.log("MCP Core: OpenAI client initialized.");
+    return true;
   } catch (error) {
     console.error("MCP Core: Failed to initialize OpenAI client:", error);
     return false;
   }
 }
 
-// Initialize on module load
-try {
-  console.log("MCP Core: Checking environment variables...");
-  console.log("MCP Core: Available env vars:", Object.keys(process.env));
-  console.log("MCP Core: OPENAI_API_KEY value:", process.env.OPENAI_API_KEY ? "sk-..." : "undefined");
-  console.log("MCP Core: OPENAI_API_KEY exists:", !!process.env.OPENAI_API_KEY);
-  
-  if (!process.env.OPENAI_API_KEY) {
-    console.warn(
-      "MCP Core: OPENAI_API_KEY not found in environment variables. Context-aware generation disabled.",
-    );
-  } else {
-    initializeOpenAI();
-  }
-} catch (error) {
-  console.error("MCP Core: Failed to initialize OpenAI client:", error);
-}
+// Don't initialize on module load, let the server.ts call this after env vars are loaded
 
 // Template options types
 interface BaseTemplateOptions {
