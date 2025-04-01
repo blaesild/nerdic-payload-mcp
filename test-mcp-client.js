@@ -1,18 +1,41 @@
-// Test client for MCP SDK
+// Updated test client with enhanced SSE implementation
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import EnhancedSSEClient from './src/client/enhanced-sse-client.js';
 
 async function main() {
   try {
-    console.log('Starting MCP test client...');
+    console.log('Starting MCP test client with enhanced SSE...');
     
-    // Create a client transport
-    const transport = new SSEClientTransport({
+    // Create an enhanced SSE client
+    const sseClient = new EnhancedSSEClient({
       sseUrl: 'http://localhost:8090/sse',
-      messageUrl: 'http://localhost:8090/messages'
+      messageUrl: 'http://localhost:8090/messages',
+      onMessage: (data) => {
+        console.log('Received message:', data);
+      },
+      onError: (error) => {
+        console.error('SSE error:', error);
+      },
+      onReconnect: () => {
+        console.log('Successfully reconnected to server');
+      },
+      maxReconnectAttempts: 5,
+      reconnectInterval: 3000
     });
     
-    // Create an MCP client with capabilities
+    // Wait for connection to establish
+    await new Promise(resolve => {
+      const checkInterval = setInterval(() => {
+        if (sseClient.sessionId) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 100);
+    });
+    
+    console.log('Connected with sessionId:', sseClient.sessionId);
+    
+    // Create MCP client
     const client = new Client(
       {
         name: 'test-client',
@@ -25,9 +48,25 @@ async function main() {
       }
     );
     
-    console.log('Connecting to MCP server...');
-    await client.connect(transport);
-    console.log('Connected to MCP server');
+    // Connect using custom send/receive functions that work with our enhanced client
+    await client.connect({
+      send: async (message) => {
+        return sseClient.sendMessage(message);
+      },
+      receive: (handler) => {
+        // Override the onMessage handler to integrate with MCP
+        const originalHandler = sseClient.onMessage;
+        sseClient.onMessage = (data) => {
+          handler(data);
+          originalHandler(data);
+        };
+        return () => {
+          sseClient.onMessage = originalHandler;
+        };
+      }
+    });
+    
+    console.log('MCP client connected');
     
     // Test the tools
     console.log('Testing validate tool...');
@@ -43,6 +82,14 @@ async function main() {
     
     // Keep the process running
     console.log('Client connection established. Press Ctrl+C to exit.');
+    
+    // Setup cleanup on exit
+    process.on('SIGINT', () => {
+      console.log('Disconnecting...');
+      sseClient.disconnect();
+      process.exit(0);
+    });
+    
   } catch (error) {
     console.error('Error in MCP test client:', error);
   }

@@ -8,6 +8,8 @@ import mcpServer from "./core/mcp-server.js";
 import apiRouter from "./api/index.js"; // Main API router
 import { errorHandler } from "./api/middleware/errorHandler.js"; // Error handler
 import { initializeOpenAI } from "./core/generation.js";
+import { connectionManager } from "./core/messaging/connection-manager.js";
+import { messageQueue } from "./core/messaging/message-queue.js";
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -52,7 +54,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 const corsOptions = {
   origin: process.env.CORS_ORIGIN || "*",
   methods: ["GET", "POST", "OPTIONS", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Client-Message-Id"],
+  exposedHeaders: ["X-Message-Id"],
   credentials: true
 } as cors.CorsOptions;
 
@@ -62,25 +65,16 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// ----- MCP SERVER WITH SSE TRANSPORT -----
-// Store transports by sessionId to support multiple connections
-const transports: { [sessionId: string]: SSEServerTransport } = {};
+// ----- MCP SERVER WITH ENHANCED SSE TRANSPORT -----
 
-// SSE endpoint
+// SSE endpoint with enhanced connection handling
 app.get("/sse", async (req: Request, res: Response) => {
   console.log("[DEBUG] New SSE connection received");
   try {
     const transport = new SSEServerTransport('/messages', res);
-    transports[transport.sessionId] = transport;
     
-    // Log the session ID for debugging
-    console.log(`[DEBUG] Created SSE transport with sessionId: ${transport.sessionId}`);
-    
-    // Handle client disconnect
-    res.on("close", () => {
-      console.log(`[DEBUG] Client disconnected: ${transport.sessionId}`);
-      delete transports[transport.sessionId];
-    });
+    // Add connection to manager
+    const connectionInfo = connectionManager.addConnection(transport, res);
     
     // Connect the transport to our MCP server
     await mcpServer.connect(transport);
@@ -91,18 +85,79 @@ app.get("/sse", async (req: Request, res: Response) => {
   }
 });
 
-// Message endpoint for client-to-server communication
+// Enhanced message endpoint with reliability features
 app.post("/messages", async (req: Request, res: Response) => {
   const sessionId = req.query.sessionId as string;
   console.log(`[DEBUG] Received message for session ${sessionId}`);
   
-  const transport = transports[sessionId];
-  if (transport) {
-    await transport.handlePostMessage(req, res);
+  // Handle message acknowledgment
+  if (req.query.ack === 'true' && req.query.messageId) {
+    const messageId = req.query.messageId as string;
+    const ackSuccess = messageQueue.acknowledge(messageId);
+    return res.status(200).json({ acknowledged: ackSuccess, messageId });
+  }
+  
+  // Handle reconnection and pending messages delivery
+  if (req.query.reconnect === 'true') {
+    const pendingMessages = messageQueue.getUnacknowledgedMessages(sessionId);
+    
+    if (pendingMessages.length > 0) {
+      console.log(`[DEBUG] Sending ${pendingMessages.length} pending messages for reconnected client ${sessionId}`);
+      return res.status(200).json({ 
+        status: 'reconnected',
+        pendingMessages: pendingMessages.map(m => ({ 
+          messageId: m.id, 
+          payload: m.payload,
+          timestamp: m.timestamp
+        }))
+      });
+    }
+    
+    return res.status(200).json({ status: 'reconnected', pendingMessages: [] });
+  }
+  
+  // Regular message handling
+  const connection = connectionManager.getConnection(sessionId);
+  if (connection?.transport) {
+    try {
+      // Update last active timestamp
+      connectionManager.updateActivity(sessionId);
+      
+      // Get client message ID if provided
+      const clientMsgId = req.headers['x-client-message-id'] as string;
+      
+      // Queue the message for reliability
+      const queuedMessageId = messageQueue.enqueue(sessionId, req.body);
+      
+      // Process the message via the transport
+      await connection.transport.handlePostMessage(req, res);
+      
+      // Add message ID to response for client acknowledgment
+      res.setHeader('X-Message-Id', queuedMessageId);
+    } catch (error) {
+      console.error(`[ERROR] Error processing message for ${sessionId}:`, error);
+      res.status(500).json({ 
+        error: 'Error processing message', 
+        message: error instanceof Error ? error.message : String(error) 
+      });
+    }
   } else {
     console.error(`[ERROR] No transport found for sessionId: ${sessionId}`);
-    res.status(400).send('No transport found for sessionId');
+    res.status(404).json({ 
+      error: 'No active connection', 
+      message: `No transport found for sessionId: ${sessionId}` 
+    });
   }
+});
+
+// Connection monitoring endpoint
+app.get("/connections", (req, res) => {
+  res.json(connectionManager.getStats());
+});
+
+// Message queue statistics endpoint
+app.get("/message-queue/stats", (req, res) => {
+  res.json(messageQueue.getStats());
 });
 
 // Mount API routes
@@ -150,7 +205,7 @@ app.get('/routes', (req, res) => {
   
   res.json({
     routes,
-    transports: Object.keys(transports)
+    activeConnections: connectionManager.getConnections().size
   });
 });
 
@@ -169,6 +224,8 @@ const server = app.listen(port, () => {
   console.log('SSE endpoint available at: /sse');
   console.log('Message endpoint available at: /messages?sessionId=<id>');
   console.log('Routes endpoint available at: /routes');
+  console.log('Connection monitoring endpoint available at: /connections');
+  console.log('Message queue stats endpoint available at: /message-queue/stats');
 
   // Log all registered routes for debugging
   console.log('Registered routes:');

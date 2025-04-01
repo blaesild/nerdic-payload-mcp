@@ -10,7 +10,8 @@
         "start": "node dist/server.esm.js",
         "lint": "eslint . --ext .ts",
         "format": "prettier --write \"src/**/*.ts\"",
-        "test": "jest"
+        "test": "jest",
+        "monitor": "tsx src/scripts/monitor-connections.ts"
     },
     "keywords": [
         "payloadcms",
@@ -29,7 +30,8 @@
         "cors": "^2.8.5",
         "helmet": "^7.1.0",
         "openai": "^4.90.0",
-        "zod": "^3.22.4"
+        "zod": "^3.22.4",
+        "axios": "^1.6.3"
     },
     "devDependencies": {
         "@types/cors": "^2.8.17",
